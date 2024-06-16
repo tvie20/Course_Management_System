@@ -28,14 +28,14 @@ void MainWindow::setListOfClass(QVector<Class> _list)
     listOfClass=_list;
 }
 
-QVector<Class> MainWindow::getListOfClass()
+QVector<Class>& MainWindow::getListOfClass()
 {
     return listOfClass;
 }
 void MainWindow::setListOfCourse (QVector<course> list){
     listOfCourse=list;
 }
-QVector<course> MainWindow::getListOfCourse (){
+QVector<course>& MainWindow::getListOfCourse (){
     return listOfCourse;
 }
 void MainWindow::setKindOfSemester (const QString& _kindOfSemester){
@@ -89,28 +89,76 @@ course MainWindow::findCourse(const QString &name, QVector<course> list)
     return course ();
 }
 
-void MainWindow::setCourseForStudent(QVector<course> listCourse, QVector<Class> &listClass)
+void MainWindow::findIndexStudent(const QString &id, int& posClass, int& pos)
 {
-    for (int i=0;i<listClass.size();i++) {
-        QVector<student> listStudent=listClass[i].getListOfStudent();
-        for (int j=0;j<listStudent.size();j++) {
-            QVector<course> lst=listStudent[j].getListOfCourses();
-            for (int k=0;k<lst.size();k++) {
-                course x=findCourse (lst[k].getClassName(), listCourse);
-                lst[k].setIdCourse(x.getCourseId());
-                lst[k].setCourseName(x.getCourseName());
-                lst[k].setDayOfWeek(x.getDayOfWeek());
-                lst[k].setMaxStudent(x.getMaxStudent());
-                lst[k].setSession(x.getSession());
-                lst[k].setTeacherName(x.getTeacher());
-                lst[k].setNumOfCredits(x.getNumOfCredits());
-                lst[k].setListOfStudent(x.getListOfStudent());
-            }
-            listStudent[j].setListOfCourses(lst);
+    QVector<Class> list=getListOfClass();
+    for (int i=0;i<list.size();i++) {
+        QVector<student> listStudent=list[i].getListOfStudent();
+        std::sort (listStudent.begin(), listStudent.end(), cmpIdStudent);
+        if (listStudent[0].getIdSudent()==id) {
+            pos=0;
+            posClass=i;
+            return;
         }
-        listClass[i].setListOfStudent(listStudent);
+        else if (listStudent[listStudent.size()-1].getIdSudent()==id) {
+            pos=listStudent.size()-1;
+            posClass=i;
+            return;
+        }
+        else if (listStudent[0].getIdSudent()<id && listStudent[listStudent.size()-1].getIdSudent()>id) {
+            int l=0, r=listStudent.size()-1;
+            while (l<=r) {
+                int m=(l+r)/2;
+                if (listStudent[m].getIdSudent()==id) {
+                    pos=m;
+                    posClass=i;
+                    return;
+                }
+                else if (listStudent[m].getIdSudent()<id) l=m+1;
+                else r=m-1;
+            }
+        }
     }
 }
+
+int MainWindow::findIndexCourse(const QString &className, QVector<course> list)
+{
+    for (int i=0;i<list.size();i++) {
+        if (className==list[i].getClassName()) return i;
+    }
+    return -1;
+}
+
+double MainWindow::gpa(student x)
+{
+    double sum=0;
+    int cnt=0;
+    QVector<course> list=x.getListOfCourses();
+    for (int i=0;i<list.size();i++) {
+        sum+=list[i].getFinal()*list[i].getNumOfCredits();
+        cnt+=list[i].getNumOfCredits();
+    }
+    return sum/cnt;
+}
+
+int MainWindow::findIndexClass(const QString &nameClass, QVector<Class> list)
+{
+    for (int i=0;i<list.size();i++) {
+        if (nameClass==list[i].getClassName()) return i;
+    }
+    return -1;
+}
+
+bool MainWindow::isTeacher()
+{
+    return teacher;
+}
+
+void MainWindow::setTeacher(const bool &t)
+{
+    teacher=t;
+}
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -120,10 +168,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->username->setPlaceholderText("Tên đăng nhập");
     ui->password->setPlaceholderText("Mật khẩu");
     QVector<Class> classInSemester;
-    readClasses ("D:\\Course_Management_System-main\\Course_Management_System-main\\build\\Qt_6_7_0_for_macOS-Debug\\database\\classes.csv", classInSemester);
+    readClasses ("D:\\Course_Management_System-main (1)\\Course_Management_System-main\\build\\Qt_6_7_0_for_macOS-Debug\\database\\classes.csv", classInSemester);
     QVector<course> courseInSemester;
-    QVector<QString> semester = readCourseInSemester("D:\\Course_Management_System-main\\Course_Management_System-main\\build\\Qt_6_7_0_for_macOS-Debug\\database\\semester.csv", courseInSemester);
-    //setCourseForStudent(courseInSemester, classInSemester);
+    QVector<QString> semester = readCourseInSemester("D:\\Course_Management_System-main (1)\\Course_Management_System-main\\build\\Qt_6_7_0_for_macOS-Debug\\database\\semester.csv", courseInSemester);
     setListOfClass(classInSemester);
     setListOfCourse(courseInSemester);
     setKindOfSemester(semester[0]);
@@ -139,16 +186,18 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_teacher_clicked()
 {
-    QVector<teacherInfo> TeacherInfo;
-    readTeacherInfo("D:\\Course_Management_System-main\\Course_Management_System-main\\build\\Qt_6_7_0_for_macOS-Debug\\database\\Teacher.csv", TeacherInfo);
-    setTeacherInfos (TeacherInfo);
+    QVector<teacherInfo> TeacherInfo=getTeacherInfos();
+    if (TeacherInfo.size()==0) {
+        readTeacherInfo("D:\\Course_Management_System-main (1)\\Course_Management_System-main\\build\\Qt_6_7_0_for_macOS-Debug\\database\\Teacher.csv", TeacherInfo);
+        setTeacherInfos (TeacherInfo);
+    }
     int pos=-1;
     QString name=ui->username->text();
     QString pass=ui->password->text();
     if (isValidLogin(name, pass, TeacherInfo, pos)) {
         setPosTeacherUser(pos);
         ui->stackedWidget->setCurrentIndex(1);
-
+        setTeacher(1);
     }
     else {
         QMessageBox::warning(this, "Đăng nhập", "Tài khoản hoặc mật khẩu không hợp lệ!");
@@ -185,42 +234,30 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::on_changePass_clicked()
 {
-    QVector<teacherInfo> cur = getTeacherInfos();
-    int pos=getPosTeacherUser();
     QString newPassword=ui->newPass->text();
-    QString comfirm=ui->comfirmPass->text();
-    if (newPassword.isEmpty()) {
-        QMessageBox::warning(this, "Đổi mật khẩu", "Mật khẩu mới không được để trống!");
-        return;
-    }
-    if (newPassword==comfirm) {
-        account ac;
-        ac.setUsername(cur[pos].getTeacherAccount().getUsername());
-        ac.setPassword(newPassword);
-        cur[pos].setTeacherAccount(ac);
-        QFile file ("D:\\Course_Management_System-main\\Course_Management_System-main\\build\\Qt_6_7_0_for_macOS-Debug\\database\\Teacher.csv");
-        if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            QTextStream stream (&file);
-            for (int i=0;i<cur.size();i++) {
-                stream << "\""<<cur[i].getTeacherAccount().getUsername()<<"\";"
-                       << "\""<<cur[i].getTeacherAccount().getPassword()<<"\";"
-                       << "\""<<cur[i].getFirstName()<<"\";"
-                       << "\""<<cur[i].getLastName()<<"\";"
-                       << "\""<<cur[i].getGender()<<"\";"
-                       << "\""<<cur[i].getDateOfBirth()<<"\";"
-                       << "\""<<cur[i].getSocialId()<<"\";"
-                       << "\""<<cur[i].getEmail()<<"\"\r\n";
-            }
-            stream.flush();
-        }
-        file.close();
-        QMessageBox::information(this, "Đổi mật khẩu", "Mật khẩu đã cập nhật!");
-        ui->stackedWidget->setCurrentIndex(1);
-    }
-    else {
+    QString confirm=ui->comfirmPass->text();
+    if (newPassword!=confirm) {
         QMessageBox::warning(this, "Đổi mật khẩu", "Mật khẩu xác nhận không trùng khớp!");
         return;
     }
+    if (isTeacher()) {
+        int pos=getPosTeacherUser();
+        QVector <teacherInfo> list=getTeacherInfos();
+        account x=list[pos].getTeacherAccount();
+        x.setPassword(newPassword);
+        list[pos].setTeacherAccount(x);
+        setTeacherInfos(list);
+    }
+    else {
+        int posClass=getPosClassStudent();
+        int pos=getPosNoStudent();
+        QVector<Class> list=getListOfClass();
+        account x=list[posClass].getListOfStudent()[pos].getStudentAccount();
+        x.setPassword(newPassword);
+        list[posClass].getListOfStudent()[pos].setStudentAccount(x);
+        setListOfClass(list);
+    }
+    QMessageBox::warning(this, "Đổi mật khẩu", "Đổi mật khẩu thành công!");
 }
 
 
@@ -403,16 +440,13 @@ student MainWindow::findStudent(const QString &id)
 void MainWindow::on_listStudentInClass_2_clicked()
 {
     ui->stackedWidget_3->setCurrentIndex(1);
+    ui->className_2->setText(ui->className_3->text());
     ui->tableStudenInCourse->setColumnWidth(0, 100);
     ui->tableStudenInCourse->setColumnWidth(1, 200);
     ui->tableStudenInCourse->setColumnWidth(2, 100);
     ui->tableStudenInCourse->setColumnWidth(3, 100);
     ui->tableStudenInCourse->setColumnWidth(4, 100);
-}
-
-void MainWindow::on_findStudentInCourse_clicked()
-{
-    QString name=ui->className_2->text();
+    QString name=ui->className_3->text();
     QVector<course> listCourse=getListOfCourse();
     for (int i=0;i<listCourse.size();i++) {
         if (name==listCourse[i].getClassName()) {
@@ -431,7 +465,6 @@ void MainWindow::on_findStudentInCourse_clicked()
     }
     QMessageBox::information(this, "Khoá học", "Không tồn tại khoá học này trong học kì!");
 }
-
 
 void MainWindow::on_newSemester_3_clicked()
 {
@@ -463,7 +496,8 @@ void MainWindow::on_findCourse_clicked()
 
 void MainWindow::on_back_clicked()
 {
-    ui->stackedWidget->setCurrentIndex(2);
+    if (isTeacher()) ui->stackedWidget->setCurrentIndex(2);
+    else ui->stackedWidget->setCurrentIndex(6);
 }
 
 bool MainWindow::loginStudent(const QString &name, const QString &pass, QVector<Class> list, int &posNo, int &posClass)
@@ -485,9 +519,23 @@ void MainWindow::on_student_clicked()
     QVector<Class> list = getListOfClass();
     QString name=ui->username->text();
     QString pass=ui->password->text();
-    int posNo=-1, posClass=-1;
-    if (loginStudent(name, pass, list, posNo, posClass)) {
+    int pos=-1, posClass=-1;
+    if (loginStudent(name, pass, list, pos, posClass)) {
         ui->stackedWidget->setCurrentIndex(6);
+        QVector <course> listCourse=getListOfCourse();
+        for (int i=0;i<list[posClass].getListOfStudent()[pos].getListOfCourses().size();i++){
+            course x=findCourse (list[posClass].getListOfStudent()[pos].getListOfCourses()[i].getClassName(), listCourse);
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setCourseName(x.getCourseName());
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setDayOfWeek(x.getDayOfWeek());
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setIdCourse(x.getCourseId());
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setListOfStudent(x.getListOfStudent());
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setMaxStudent(x.getMaxStudent());
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setNumOfCredits(x.getNumOfCredits());
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setSession(x.getSession());
+            list[posClass].getListOfStudent()[pos].getListOfCourses()[i].setTeacherName(x.getTeacher());
+        }
+        setListOfClass(list);
+        setTeacher(0);
         return;
     }
     QMessageBox::warning(this, "Đăng nhập", "Tài khoản hoặc mật khẩu không hợp lệ!");
@@ -517,18 +565,278 @@ void MainWindow::on_logOut_5_clicked()
 
 void MainWindow::on_schedule_clicked()
 {
-    // ui->stackedWidget_4->setCurrentIndex(2);
-    // ui->schoolYear_7->setText(getSchoolYear());
-    // ui->semester_3->setText (getKindOfSemester());
-    // ui->startDate_3->setText (getStartDate());
-    // ui->endDate_3->setText(getEndDate());
-    // QVector<course> listCourse=getListOfCourse();
-    // int classPos=getPosClassStudent();
-    // int noPos=getPosNoStudent();
-    // QVector<Class> list=getListOfClass();
-    // QVector<QString> listClassName=list[classPos].getListOfStudent()[noPos].getListOfCourses();
-    // ui->schedule_2->setRowCount ();
+    ui->stackedWidget_4->setCurrentIndex(2);
+    int classPos=getPosClassStudent();
+    int noPos=getPosNoStudent();
+    QVector<course> list=getListOfClass()[classPos].getListOfStudent()[noPos].getListOfCourses();
+    ui->schedule_2->setRowCount(list.size());
+    for (int i=0;i<list.size();i++) {
+        ui->schedule_2->setItem(i, 0, new QTableWidgetItem(list[i].getCourseId()));
+        ui->schedule_2->setItem(i, 1, new QTableWidgetItem(list[i].getCourseName()));
+        ui->schedule_2->setItem(i, 2, new QTableWidgetItem(list[i].getClassName()));
+        ui->schedule_2->setItem(i, 3, new QTableWidgetItem(list[i].getTeacher()));
+        ui->schedule_2->setItem(i, 4, new QTableWidgetItem(QString::number(list[i].getNumOfCredits())));
+        ui->schedule_2->setItem(i, 5, new QTableWidgetItem(list[i].getDayOfWeek() + list[i].getSession()));
+    }
+}
+
+void MainWindow::on_outputList_clicked()
+{
+    QString folderPath = QFileDialog::getExistingDirectory(this, "Select Folder", QString(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    QString name=ui->className_3->text();
+    QVector<course> listCourse=getListOfCourse();
+    QString filePath=folderPath+"/"+name+".csv";
+    QFile file (filePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        QTextStream stream (&file);
+        for (int i=0;i<listCourse.size();i++){
+            if (name==listCourse[i].getClassName()) {
+                QVector<QString> list=listCourse[i].getListOfStudent();
+                for (int j=0;j<list.size();j++) {
+                    student x=findStudent(list[j]);
+                    stream <<x.getIdSudent()<<";"
+                           <<x.getFirstName()<<";"
+                           <<x.getLastName()<<";"
+                           <<x.getGender()<<";"
+                           <<x.getDateOfBirth()<<";"
+                           <<x.getSocialId()<<"\n";
+                }
+                break;
+            }
+        }
+    }
+    file.close();
 }
 
 
+
+void MainWindow::on_importFile_clicked()
+{
+    QString fileName=QFileDialog::getOpenFileName(this, "Open a file", QDir::homePath());
+    QFile file (fileName);
+    if (file.open(QIODevice::ReadOnly)){
+        QString className=ui->className_3->text();
+        QTextStream stream(&file);
+        QString lineData;
+        QVector<Class> list=getListOfClass();
+        course x=findCourse (className, getListOfCourse());
+        while (stream.atEnd()==false){
+            lineData=stream.readLine().trimmed();
+            QStringList data=lineData.split(";");
+            QString id=data.at(1);
+            int posClass=-1, pos=-1;
+            findIndexStudent(id, posClass, pos);
+            if (posClass!=-1 && pos!=-1) {
+                int posCourse = findIndexCourse(className, list[posClass].getListOfStudent()[pos].getListOfCourses());
+                if (posCourse!=-1) {
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setCourseName(x.getCourseName());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setIdCourse(x.getCourseId());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setNumOfCredits(x.getNumOfCredits());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setTeacherName(x.getTeacher());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setNumOfCredits(x.getNumOfCredits());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setTotal(data.at(4).toDouble());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setFinal(data.at(5).toDouble());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setMid(data.at(6).toDouble());
+                    list[posClass].getListOfStudent()[pos].getListOfCourses()[posCourse].setOtherMark(data.at(7).toDouble());
+                }
+            }
+
+        }
+        setListOfClass(list);
+        file.close();
+        QMessageBox::information(this, "Cập nhật", "Cập nhật điểm thành công!");
+    }
+}
+
+
+void MainWindow::on_viewScoreBoard_clicked()
+{
+    QString className=ui->className_3->text();
+    course x=findCourse (className, getListOfCourse());
+    ui->stackedWidget_3->setCurrentIndex(3);
+    ui->scoreboard->setColumnWidth(0, 100);
+    ui->scoreboard->setColumnWidth(1, 200);
+    ui->scoreboard->setColumnWidth(2, 100);
+    ui->scoreboard->setColumnWidth(3, 100);
+    ui->scoreboard->setColumnWidth(4, 100);
+    ui->scoreboard->setColumnWidth(5, 100);
+    ui->scoreboard->setColumnWidth(6, 100);
+
+    QVector<QString> list=x.getListOfStudent();
+    ui->scoreboard->setRowCount (list.size());
+    for (int i=0;i<list.size();i++) {
+        student stu=findStudent(list[i]);
+        QVector<course> list=stu.getListOfCourses();
+        int pos=findIndexCourse(className, list);
+        if (pos<0 || pos>=list.size()) {
+            QMessageBox::warning(this, "Error", "Error!");
+            return;
+        }
+
+        ui->scoreboard->setItem(i, 0, new QTableWidgetItem(stu.getIdSudent()));
+        ui->scoreboard->setItem(i, 1, new QTableWidgetItem(stu.getFirstName()));
+        ui->scoreboard->setItem(i, 2, new QTableWidgetItem(stu.getLastName()));
+        ui->scoreboard->setItem(i, 3, new QTableWidgetItem(QString::number(list[pos].getTotal(), 'f', 2)));
+        ui->scoreboard->setItem(i, 4, new QTableWidgetItem(QString::number(list[pos].getFinal(), 'f', 2)));
+        ui->scoreboard->setItem(i, 5, new QTableWidgetItem(QString::number(list[pos].getMid(), 'f', 2)));
+        ui->scoreboard->setItem(i, 6, new QTableWidgetItem(QString::number(list[pos].getOtherMark(), 'f',2)));
+    }
+}
+
+
+void MainWindow::on_viewScoreboard_clicked(){
+    ui->stackedWidget_2->setCurrentIndex(2);
+    ui->gpaClass->setColumnWidth(0, 100);
+    ui->gpaClass->setColumnWidth(1, 200);
+    ui->gpaClass->setColumnWidth(2, 100);
+    ui->gpaClass->setColumnWidth(3, 200);
+    QString className=ui->className->text();
+    QVector<Class> list=getListOfClass();
+
+    int posClass=findIndexClass(className, list);
+    if (posClass!=-1) {
+        ui->gpaClass->setRowCount (list[posClass].getListOfStudent().size());
+        for (int i=0;i<list[posClass].getListOfStudent().size();i++) {
+            ui->gpaClass->setItem(i, 0, new QTableWidgetItem(list[posClass].getListOfStudent()[i].getIdSudent()));
+            ui->gpaClass->setItem(i, 1, new QTableWidgetItem(list[posClass].getListOfStudent()[i].getFirstName()));
+            ui->gpaClass->setItem(i, 2, new QTableWidgetItem(list[posClass].getListOfStudent()[i].getLastName()));
+            list[posClass].getListOfStudent()[i].setGpa(gpa (list[posClass].getListOfStudent()[i]));
+            ui->gpaClass->setItem(i, 3, new QTableWidgetItem(QString::number(list[posClass].getListOfStudent()[i].getGpa(), 'f', 2)));
+        }
+        setListOfClass(list);
+    }
+    else QMessageBox::warning(this, "Lớp học", "Không tồn tại lớp trong học kì này!");
+}
+
+
+void MainWindow::on_viewMore_clicked(){
+    ui->stackedWidget_2->setCurrentIndex(3);
+}
+
+
+void MainWindow::on_viewStudentScoreboard_clicked(){
+    QString id=ui->idStudent_2->text();
+    student s=findStudent(id);
+    QVector<course> list=s.getListOfCourses();
+    ui->studentScoreboard->setRowCount (list.size());
+    for (int i=0;i<list.size();i++) {
+        ui->studentScoreboard->setItem(i, 0, new QTableWidgetItem(list[i].getCourseName()));
+        ui->studentScoreboard->setItem(i, 1, new QTableWidgetItem(list[i].getCourseId()));
+        ui->studentScoreboard->setItem(i, 2, new QTableWidgetItem(QString::number(list[i].getNumOfCredits())));
+        ui->studentScoreboard->setItem(i, 3, new QTableWidgetItem(list[i].getClassName()));
+        ui->studentScoreboard->setItem(i, 4, new QTableWidgetItem(list[i].getTeacher()));
+        ui->studentScoreboard->setItem(i, 5, new QTableWidgetItem(QString::number(list[i].getFinal(), 'f', 2)));
+    }
+}
+
+
+void MainWindow::on_home_5_clicked(){
+    ui->stackedWidget_4->setCurrentIndex(0);
+}
+
+
+void MainWindow::on_summary_clicked(){
+    ui->stackedWidget_4->setCurrentIndex(3);
+    ui->schoolYear_7->setText (getSchoolYear());
+    ui->semester_3->setText (getKindOfSemester());
+    ui->startDate_3->setText(getStartDate());
+    ui->endDate_4->setText (getEndDate());
+    int posClass=getPosClassStudent();
+    int pos=getPosNoStudent();
+    QVector<Class> list=getListOfClass();
+    if (list[posClass].getListOfStudent()[pos].getGpa()==0) {
+        list[posClass].getListOfStudent()[pos].setGpa(gpa (list[posClass].getListOfStudent()[pos]));
+        setListOfClass(list);
+    }
+    QVector<course> x=list[posClass].getListOfStudent()[pos].getListOfCourses();
+    ui->gpa->setText(QString::number(list[posClass].getListOfStudent()[pos].getGpa(),'f',2));
+    ui->scoreboard_2->setRowCount(x.size());
+    for (int i=0;i<x.size();i++){
+        ui->scoreboard_2->setItem (i, 0, new QTableWidgetItem (x[i].getCourseId()));
+        ui->scoreboard_2->setItem (i, 1, new QTableWidgetItem (x[i].getCourseName()));
+        ui->scoreboard_2->setItem (i, 2, new QTableWidgetItem (QString::number(x[i].getTotal(), 'f', 2) ));
+        ui->scoreboard_2->setItem (i, 3, new QTableWidgetItem (QString::number(x[i].getFinal(), 'f', 2)));
+        ui->scoreboard_2->setItem (i, 4, new QTableWidgetItem (QString::number(x[i].getMid(), 'f', 2)));
+        ui->scoreboard_2->setItem (i, 5, new QTableWidgetItem (QString::number(x[i].getOtherMark(),  'f', 2)));
+    }
+}
+
+void MainWindow::on_changePassword_clicked(){
+    ui->stackedWidget->setCurrentIndex(3);
+}
+void MainWindow::on_logOut_3_clicked(){
+    on_logOut_2_clicked();
+}
+
+void MainWindow::on_logOut_clicked()
+{
+    on_logOut_2_clicked();
+}
+
+
+void MainWindow::on_newAccount_2_clicked()
+{
+    QString firstName=ui->firstName_3->text();
+    if (firstName=="") {
+        QMessageBox::warning(this, "Thông báo", "Họ không được để trống");
+        return;
+    }
+    QString lastName=ui->lastName_3->text();
+    if (lastName=="") {
+        QMessageBox::warning(this, "Thông báo", "Tên không được để trống");
+        return;
+    }
+    QString gender=ui->gender_3->text();
+    if (gender=="") {
+        QMessageBox::warning(this, "Thông báo", "Giới tính không được để trống");
+        return;
+    }
+    QString dateOfBirth=ui->dateOfBirth_3->text();
+    if (dateOfBirth=="") {
+        QMessageBox::warning(this, "Thông báo", "Ngày sinh không được để trống");
+        return;
+    }
+    QString socialId=ui->socialId_3->text();
+    if (socialId=="") {
+        QMessageBox::warning(this, "Thông báo", "CCCD không được để trống");
+        return;
+    }
+    QString email=ui->email_2->text();
+    if (email==""){
+        QMessageBox::warning(this, "Thông báo", "Email không được để trống");
+        return;
+    }
+    QString userName=ui->username_4->text();
+    if (userName=="") {
+        QMessageBox::warning(this, "Thông báo", "Tên đăng nhập không được để trống");
+        return;
+    }
+    QString password=ui->password_2->text();
+    if (password=="") {
+        QMessageBox::warning(this, "Thông báo", "Mật khẩu không được để trống");
+        return;
+    }
+    teacherInfo x;
+    x.setFirstName(firstName);
+    x.setLastName(lastName);
+    x.setGender(gender);
+    x.setDateOfBirth(dateOfBirth);
+    x.setSocialId(socialId);
+    x.setEmail(email);
+    account tmp;
+    tmp.setUsername(userName);
+    tmp.setPassword(password);
+    x.setTeacherAccount(tmp);
+    QVector<teacherInfo> list=getTeacherInfos();
+    list.append(x);
+    setTeacherInfos(list);
+    QMessageBox::warning(this, "Thông báo", "Tạo tài khoản thành công!");
+     ui->stackedWidget->setCurrentIndex(0);
+}
+
+
+void MainWindow::on_newAccount_clicked()
+{
+    ui->stackedWidget->setCurrentIndex(7);
+}
 

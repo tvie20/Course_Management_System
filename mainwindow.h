@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QFileDialog>
+#include <QDir>
 #include "teacherinfo.h"
 #include "class.h"
 #include "course.h"
@@ -32,11 +34,11 @@ public:
 
     void setListOfClass (QVector<Class> _list);
 
-    QVector<Class> getListOfClass ();
+    QVector<Class> &getListOfClass ();
 
     void setListOfCourse (QVector<course> list);
 
-    QVector<course> getListOfCourse ();
+    QVector<course> &getListOfCourse ();
 
     void setKindOfSemester (const QString& _kindOfSemester);
 
@@ -68,7 +70,17 @@ public:
 
     course findCourse (const QString& name, QVector<course> list);
 
-    void setCourseForStudent (QVector<course> listCourse, QVector<Class> &listClass);
+    void findIndexStudent (const QString& id, int& posClass, int& pos);
+
+    int findIndexCourse (const QString& className, QVector<course> list);
+
+    double gpa (student x);
+
+    int findIndexClass (const QString& nameClass, QVector<Class> list);
+
+    bool isTeacher ();
+
+    void setTeacher(const bool& t);
 
 private slots:
     void on_teacher_clicked();
@@ -117,8 +129,6 @@ private slots:
 
     void on_listStudentInClass_2_clicked();
 
-    void on_findStudentInCourse_clicked();
-
     void on_newSemester_3_clicked();
 
     void on_findCourse_clicked();
@@ -133,6 +143,32 @@ private slots:
 
     void on_schedule_clicked();
 
+    void on_outputList_clicked();
+
+    void on_importFile_clicked();
+
+    void on_viewScoreBoard_clicked();
+
+    void on_viewScoreboard_clicked();
+
+    void on_viewMore_clicked();
+
+    void on_viewStudentScoreboard_clicked();
+
+    void on_home_5_clicked();
+
+    void on_summary_clicked();
+
+    void on_changePassword_clicked();
+
+    void on_logOut_3_clicked();
+
+    void on_logOut_clicked();
+
+    void on_newAccount_2_clicked();
+
+    void on_newAccount_clicked();
+
 private:
     Ui::MainWindow *ui;
     QVector<teacherInfo> TeacherInfo;
@@ -141,5 +177,6 @@ private:
     QVector<Class> listOfClass;
     QVector<course> listOfCourse;
     QString kindOfSemester, schoolYear,startDate, endDate;
+    bool teacher;
 };
 #endif // MAINWINDOW_H

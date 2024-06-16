@@ -1,4 +1,5 @@
 #include "class.h"
+#include <iostream>
 
 void Class::setClassName (const QString& _className){
     className=_className;
@@ -9,8 +10,41 @@ void Class::setListOfStudent (QVector<student> _list){
 QString Class::getClassName (){
     return className;
 }
-QVector<student> Class::getListOfStudent (){
+QVector<student>& Class::getListOfStudent (){
     return listOfStudent;
+}
+
+void Class::AddnewStudent(const student& s)
+{
+    listOfStudent.push_back(s);
+}
+
+void Class::UpdateStudentFromCsv(const QString &path)
+{
+    QFile ifile(path);
+    if (ifile.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&ifile);
+        while (!stream.atEnd()) {
+            QString idStudent, firstName, lastName, gender, dateOfBirth, socialId, score;
+            double gpa;
+
+            QString textLine = stream.readLine();
+            QStringList data = textLine.split(";");
+
+            idStudent = data[0];
+            firstName = data[1];
+            lastName = data[2];
+            gender = data[3];
+            dateOfBirth = data[4];
+            socialId = data[5];
+            score = data[6];
+
+            gpa = score.toDouble();
+            student s(idStudent, firstName, lastName, gender, dateOfBirth, socialId, gpa);
+
+            listOfStudent.append(s);
+        }
+    } else qDebug()<<"Khong mo duoc file";
 }
 
 void readClasses(const QString &path, QVector<Class> &list)
@@ -45,9 +79,14 @@ void readClasses(const QString &path, QVector<Class> &list)
                 x.setGpa(data.at(8).toDouble());
                 int numsCourse=data.at(9).toInt();
                 QVector<course> listCourses;
-                for (int k=0;k<numsCourse;k++) {
+                for (int k=10;k<=10+(numsCourse-1)*5;k+=5) {
                     course tmp;
-                    tmp.setClassName(data.at(k+10));
+                    tmp.setClassName(data.at(k));
+                    tmp.setTotal(data.at(k+1).toDouble());
+                    tmp.setFinal(data.at(k+2).toDouble());
+                    tmp.setMid(data.at(k+3).toDouble());
+                    tmp.setOtherMark(data.at(k+4).toDouble());
+
                     listCourses.append(tmp);
                 }
                 x.setListOfCourses(listCourses);

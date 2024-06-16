@@ -4,6 +4,7 @@
 #include <QVector>
 #include <QtCore>
 #include <QFile>
+
 class course
 {
 public:
@@ -73,7 +74,15 @@ public:
 
     double getOtherMark();
 
-    QVector<QString> getListOfStudent ();
+    QVector<QString> &getListOfStudent ();
+
+    void LoadStudentFromCsv(const char* filename);
+
+    void AddaStudent(const QString& s);
+
+    void RemoveStudentbyID(const QString& ID);
+
+    void LoadStudentFromCsv(const QString &path);
 
 private:
     QString courseId, courseName, className, teacherName, dayOfWeek, session;

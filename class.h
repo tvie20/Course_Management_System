@@ -17,7 +17,11 @@ public:
 
     QString getClassName ();
 
-    QVector <student> getListOfStudent ();
+    QVector <student>& getListOfStudent ();
+
+    void AddnewStudent(const student& s);
+
+    void UpdateStudentFromCsv(const QString &path);
 
 private:
     QString className;
